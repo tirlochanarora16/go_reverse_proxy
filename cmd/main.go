@@ -1,17 +1,14 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
+
+	"github.com/tirlochanarora16/go_reverse_proxy/internal/requests"
 )
 
 func main() {
-	fmt.Println("hello world")
-
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf("running")
-	})
-
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	mux := http.NewServeMux()
+	requests.HandleMuxRoutes(mux)
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }
