@@ -5,6 +5,9 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+
+	"github.com/tirlochanarora16/go_reverse_proxy/internal/middleware"
+	"go.uber.org/zap"
 )
 
 func CreateReverseProxy(target string) *httputil.ReverseProxy {
@@ -20,7 +23,7 @@ func CreateReverseProxy(target string) *httputil.ReverseProxy {
 	proxy.Director = func(r *http.Request) {
 		originalDirector(r)
 
-		log.Printf("Forwarding %s reqeuest to %s", r.Method, r.URL.String())
+		middleware.Logger.Info("Request -> ", zap.String("method", r.Method), zap.String("URL", r.URL.String()), zap.String("host", r.Host))
 	}
 
 	return proxy
