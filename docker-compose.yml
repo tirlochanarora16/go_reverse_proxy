@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - 3001:3000
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    depends_on:
+      - loki
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+
+  loki:
+    image: grafana/loki:latest
+    ports:
+      - 3100:3100
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki-storage:/loki
+
+  promtail:
+    image: grafana/promtail:latest
+    volumes:
+      - ./internal/config/promtail-config.yml:/etc/promtail/promtail.yaml
+      - ./logs:/var/log/myapp
+    command: -config.file=/etc/promtail/promtail.yaml
+    depends_on:
+      - loki
+
+volumes:
+  grafana-storage:
+  loki-storage:

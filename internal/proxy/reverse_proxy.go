@@ -23,7 +23,12 @@ func CreateReverseProxy(target string) *httputil.ReverseProxy {
 	proxy.Director = func(r *http.Request) {
 		originalDirector(r)
 
-		middleware.Logger.Info("Request -> ", zap.String("method", r.Method), zap.String("URL", r.URL.String()), zap.String("host", r.Host))
+		method := zap.String("method", r.Method)
+		url := zap.String("url", r.URL.String())
+		path := zap.String("path", r.URL.Path)
+		host := zap.String("host", r.Host)
+
+		middleware.Logger.Info("Request -> ", method, path, url, host)
 	}
 
 	return proxy
