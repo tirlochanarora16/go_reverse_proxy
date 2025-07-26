@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+	go middleware.InitRateLimiter()
 	middleware.InitLogger()
 	mux := http.NewServeMux()
 	requests.HandleMuxRoutes(mux)

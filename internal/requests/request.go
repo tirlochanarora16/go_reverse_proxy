@@ -22,7 +22,7 @@ func HandleMuxRoutes(mux *http.ServeMux) {
 	// req from localhost:8080 will be transferred to localhost:3000
 	reverseProxy := proxy.CreateReverseProxy("http://localhost:3000")
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
 		rr := &responseRecorder{ResponseWriter: w, status: 200}
 		reverseProxy.ServeHTTP(rr, r)
 
@@ -38,5 +38,9 @@ func HandleMuxRoutes(mux *http.ServeMux) {
 		}
 
 		middleware.Logger.Info("Response <- ", method, url, status)
-	})
+	}
+
+	rateLimitHandler := middleware.RateLimitMiddleware(http.HandlerFunc(handler))
+
+	mux.Handle("/", rateLimitHandler)
 }
