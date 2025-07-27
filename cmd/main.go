@@ -4,14 +4,16 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/tirlochanarora16/go_reverse_proxy/internal/config"
 	"github.com/tirlochanarora16/go_reverse_proxy/internal/lb"
 	"github.com/tirlochanarora16/go_reverse_proxy/internal/middleware"
 	"github.com/tirlochanarora16/go_reverse_proxy/internal/requests"
 )
 
 func main() {
-	configFile := lb.CheckConfigFile()
-	lb.ReadConfigFile(configFile)
+	lb.CheckConfigFlag()
+	lb.ReadConfigFile()
+	config.ParseConfigFile()
 
 	go middleware.InitRateLimiter()
 	middleware.InitLogger()

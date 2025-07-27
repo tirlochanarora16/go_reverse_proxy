@@ -8,7 +8,9 @@ import (
 	"strings"
 )
 
-func CheckConfigFile() string {
+var ConfigFileName string
+
+func CheckConfigFlag() {
 	var configFile string
 
 	flag.StringVar(&configFile, "config", "", "YAML file for reverse proxy configuration is missing")
@@ -20,11 +22,11 @@ func CheckConfigFile() string {
 		os.Exit(1)
 	}
 
-	return configFile
+	ConfigFileName = configFile
 }
 
-func ReadConfigFile(configFile string) {
-	_, err := os.Stat(configFile)
+func ReadConfigFile() {
+	_, err := os.Stat(ConfigFileName)
 
 	if os.IsNotExist(err) {
 		fmt.Println("File not found")

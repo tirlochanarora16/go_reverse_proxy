@@ -7,4 +7,5 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
