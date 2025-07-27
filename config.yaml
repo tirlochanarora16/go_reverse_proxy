@@ -1,0 +1,11 @@
+routes:
+  - path: /health
+    target: http://localhost:3000
+    rate_limit:
+      rate: 10
+      burst: 20
+  - path: /
+    target: http://localhost:3000
+    rate_limit:
+      rate: 10
+      burst: 20
