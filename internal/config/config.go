@@ -19,8 +19,8 @@ type Route struct {
 }
 
 type RateLimit struct {
-	Rate  int64 `yaml:"rate"`
-	Burst int64 `yaml:"burst"`
+	Rate  int `yaml:"rate"`
+	Burst int `yaml:"burst"`
 }
 
 var ConfigFileData Config

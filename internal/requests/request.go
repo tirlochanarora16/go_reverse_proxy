@@ -3,6 +3,7 @@ package requests
 import (
 	"net/http"
 
+	"github.com/tirlochanarora16/go_reverse_proxy/internal/config"
 	"github.com/tirlochanarora16/go_reverse_proxy/internal/middleware"
 	"github.com/tirlochanarora16/go_reverse_proxy/internal/proxy"
 	"go.uber.org/zap"
@@ -20,27 +21,37 @@ func (rr *responseRecorder) WriteHeader(code int) {
 
 func HandleMuxRoutes(mux *http.ServeMux) {
 	// req from localhost:8080 will be transferred to localhost:3000
-	reverseProxy := proxy.CreateReverseProxy("http://localhost:3000")
+	for _, route := range config.ConfigFileData.Routes {
+		route := route
 
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		rr := &responseRecorder{ResponseWriter: w, status: 200}
-		reverseProxy.ServeHTTP(rr, r)
+		reverseProxy := proxy.CreateReverseProxy(route.Target)
 
-		method := zap.String("method", r.Method)
-		url := zap.String("url", r.URL.String())
-		status := zap.Int("status", rr.status)
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			rr := &responseRecorder{ResponseWriter: w, status: 200}
+			reverseProxy.ServeHTTP(rr, r)
 
-		isError := rr.status >= 400 && rr.status < 600
+			method := zap.String("method", r.Method)
+			url := zap.String("url", r.URL.String())
+			status := zap.Int("status", rr.status)
 
-		if isError {
-			middleware.Logger.Error("Response <-", method, url, status)
-			return
+			isError := rr.status >= 400 && rr.status < 600
+
+			if isError {
+				middleware.Logger.Error("Response <-", method, url, status)
+				return
+			}
+
+			middleware.Logger.Info("Response <- ", method, url, status)
 		}
 
-		middleware.Logger.Info("Response <- ", method, url, status)
+		var finalHandler http.Handler = http.HandlerFunc(handler)
+
+		if route.RateLimit != nil {
+			rps := route.RateLimit.Rate
+			burst := route.RateLimit.Burst
+			finalHandler = middleware.RateLimitMiddleware(finalHandler, rps, burst)
+		}
+
+		mux.Handle(route.Path, finalHandler)
 	}
-
-	rateLimitHandler := middleware.RateLimitMiddleware(http.HandlerFunc(handler))
-
-	mux.Handle("/", rateLimitHandler)
 }

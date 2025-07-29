@@ -4,8 +4,8 @@ routes:
     rate_limit:
       rate: 10
       burst: 20
-  - path: /
-    target: http://localhost:3000
+  - path: /events
+    target: http://localhost:4000
     rate_limit:
       rate: 10
       burst: 20

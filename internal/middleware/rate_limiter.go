@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -43,31 +44,33 @@ func getClientIP(r *http.Request) string {
 	return ip
 }
 
-func getLimiter(ip string) *rate.Limiter {
+func getLimiter(ip string, r int, burst int) *rate.Limiter {
 	mu.Lock()
 	defer mu.Unlock()
 
 	cl, exists := clients[ip]
 
 	if !exists {
-		limiter := rate.NewLimiter(1, 5)
-		clients[ip] = &clientLimiter{
+		limiter := rate.NewLimiter(rate.Limit(r), int(burst))
+		cl = &clientLimiter{
 			limiter:  limiter,
 			lastSeen: time.Now(),
 		}
+		clients[ip] = cl
+	} else {
+		cl.lastSeen = time.Now()
 	}
-
-	cl.lastSeen = time.Now()
 	return cl.limiter
 }
 
-func RateLimitMiddleware(next http.Handler) http.Handler {
+func RateLimitMiddleware(next http.Handler, rate int, burst int) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip := getClientIP(r)
-		limiter := getLimiter(ip)
+		limiter := getLimiter(ip, rate, burst)
 
 		if !limiter.Allow() {
 			http.Error(w, "Too many request", http.StatusTooManyRequests)
+			Logger.Error("Rate Limit exceeded", zap.String("ip", ip), zap.String("path", r.URL.Path))
 			return
 		}
 
