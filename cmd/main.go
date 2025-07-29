@@ -15,8 +15,9 @@ func main() {
 	lb.ReadConfigFile()
 	config.ParseConfigFile()
 
-	go middleware.InitRateLimiter()
 	middleware.InitLogger()
+	go middleware.InitRateLimiter()
+	go config.StartConfigFileWatcher()
 	mux := http.NewServeMux()
 	requests.HandleMuxRoutes(mux)
 	log.Fatal(http.ListenAndServe(":8080", mux))
