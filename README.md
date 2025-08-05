@@ -1,11 +1,13 @@
 # Go Reverse Proxy
 
-A high-performance reverse proxy server built in Go with advanced features including rate limiting, comprehensive logging, and observability with Grafana and Loki.
+A high-performance reverse proxy server built in Go with advanced features including configuration-based routing, hot reload, rate limiting, comprehensive logging, and observability with Grafana and Loki.
 
 ## 🚀 Features
 
-- **Reverse Proxy**: Routes requests from port 8080 to backend services
-- **Rate Limiting**: Per-client IP rate limiting with configurable limits
+- **Configuration-Based Routing**: YAML-based route configuration with hot reload
+- **Multiple Backend Support**: Route different paths to different backend services
+- **Per-Route Rate Limiting**: Configurable rate limits for each route independently
+- **Hot Reload**: Automatic configuration reload on file changes
 - **Structured Logging**: JSON-formatted logs with rotation support
 - **Observability Stack**: Integrated Grafana + Loki + Promtail for log monitoring
 - **Docker Support**: Complete containerized deployment with Docker Compose
@@ -15,8 +17,8 @@ A high-performance reverse proxy server built in Go with advanced features inclu
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Client        │───▶│  Reverse Proxy  │───▶│  Backend App    │
-│   (Port 8080)   │    │   (Go Server)   │    │   (Port 3000)   │
+│   Client        │───▶│  Reverse Proxy  │───▶│  Backend Apps   │
+│   (Port 8080)   │    │   (Go Server)   │    │   (Port 3000+)  │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
                               │
                               ▼
@@ -39,25 +41,30 @@ reverse_proxy/
 │   │   ├── config.go           # Configuration management
 │   │   └── promtail-config.yml # Promtail config
 │   ├── lb/
+│   │   ├── helpers.go          # Configuration file handling
+│   │   ├── routes.go           # Route management
 │   │   └── round_robin.go      # Load balancer (placeholder)
 │   ├── middleware/
 │   │   ├── logger.go           # Structured logging setup
 │   │   └── rate_limiter.go     # Rate limiting middleware
 │   ├── proxy/
 │   │   └── reverse_proxy.go    # Reverse proxy implementation
-│   └── requests/
-│       └── request.go          # Request handling and routing
+│   ├── requests/
+│   │   └── request.go          # Request handling and routing
+│   └── watcher/
+│       └── watcher.go          # File watcher for hot reload
 ├── logs/                       # Application logs directory
 ├── docker-compose.yml          # Docker Compose configuration
 ├── go.mod                      # Go module dependencies
-└── config.yaml                 # Application configuration
+├── config.yaml                 # Application configuration
+└── README.md                   # This file
 ```
 
 ## 🛠️ Prerequisites
 
 - Go 1.24.2 or higher
 - Docker and Docker Compose (for monitoring stack)
-- Backend application running on port 3000
+- Backend applications running on configured ports
 
 ## 🚀 Quick Start
 
@@ -74,15 +81,38 @@ cd reverse_proxy
 go mod download
 ```
 
-### 3. Run the Application
+### 3. Create Configuration File
 
-```bash
-go run cmd/main.go
+Create a `config.yaml` file with your route definitions:
+
+```yaml
+routes:
+  - path: /health
+    target: http://localhost:3000
+    rate_limit:
+      rate: 10
+      burst: 20
+  - path: /events
+    target: http://localhost:4000/
+    rate_limit:
+      rate: 10
+      burst: 20
+  - path: /api
+    target: http://localhost:5000
+    rate_limit:
+      rate: 5
+      burst: 10
 ```
 
-The reverse proxy will start on port 8080 and forward requests to `http://localhost:3000`.
+### 4. Run the Application
 
-### 4. Start Monitoring Stack (Optional)
+```bash
+go run cmd/main.go -config=config.yaml
+```
+
+The reverse proxy will start on port 8080 and route requests based on your configuration.
+
+### 5. Start Monitoring Stack (Optional)
 
 ```bash
 docker-compose up -d
@@ -92,6 +122,43 @@ This will start:
 - **Grafana**: Available at http://localhost:3001 (admin/admin)
 - **Loki**: Log aggregation at http://localhost:3100
 - **Promtail**: Log collection and forwarding
+
+## ⚙️ Configuration
+
+### Route Configuration
+
+The application uses a YAML configuration file to define routes:
+
+```yaml
+routes:
+  - path: /health          # URL path to match
+    target: http://localhost:3000  # Backend service URL
+    rate_limit:            # Optional rate limiting
+      rate: 10            # Requests per second
+      burst: 20           # Burst capacity
+```
+
+### Configuration Features
+
+- **Path Matching**: Routes are matched based on URL paths
+- **Multiple Backends**: Each route can point to a different backend service
+- **Per-Route Rate Limiting**: Each route can have independent rate limiting
+- **Hot Reload**: Configuration changes are automatically detected and applied
+- **Command-Line Flag**: Use `-config=path/to/config.yaml` to specify config file
+
+### Rate Limiting
+
+Rate limiting can be configured per route:
+- **Rate**: Requests per second (e.g., 10 rps)
+- **Burst**: Maximum burst capacity (e.g., 20 requests)
+- **IP-based**: Rate limiting is applied per client IP address
+
+### Logging
+
+- **Format**: JSON structured logging
+- **Output**: Console + file (`./logs/proxy.log`)
+- **Rotation**: 10MB max size, 3 backups, 30 days retention
+- **Compression**: Enabled for rotated logs
 
 ## 📊 Monitoring & Observability
 
@@ -150,30 +217,6 @@ The application generates structured JSON logs with the following fields:
 {job="reverse-proxy"} |= "Too many request"
 ```
 
-## ⚙️ Configuration
-
-### Rate Limiting
-
-The rate limiter is configured with:
-- **Rate**: 1 request per second
-- **Burst**: 5 requests
-- **Cleanup**: Old client entries cleaned every 5 minutes
-
-### Logging
-
-- **Format**: JSON structured logging
-- **Output**: Console + file (`./logs/proxy.log`)
-- **Rotation**: 10MB max size, 3 backups, 30 days retention
-- **Compression**: Enabled for rotated logs
-
-### Docker Services
-
-| Service | Port | Description |
-|---------|------|-------------|
-| Grafana | 3001 | Monitoring dashboard |
-| Loki | 3100 | Log aggregation |
-| Promtail | 9080 | Log collection |
-
 ## 🔧 Development
 
 ### Building
@@ -195,6 +238,8 @@ go test ./...
 - **`internal/middleware/`**: Rate limiting and logging middleware
 - **`internal/requests/`**: Request routing and handling
 - **`internal/config/`**: Configuration management
+- **`internal/watcher/`**: File watcher for hot reload
+- **`internal/lb/`**: Load balancing and route management
 
 ## 🐳 Docker Deployment
 
@@ -211,7 +256,7 @@ docker-compose up -d
 ### Environment Variables
 
 - `PORT`: Server port (default: 8080)
-- `TARGET_URL`: Backend service URL (default: http://localhost:3000)
+- `CONFIG_FILE`: Path to configuration file
 
 ## 📈 Performance
 
@@ -219,6 +264,7 @@ docker-compose up -d
 - **Latency**: Minimal overhead (< 1ms per request)
 - **Memory**: Efficient memory usage with connection pooling
 - **Scalability**: Horizontal scaling ready
+- **Hot Reload**: Zero-downtime configuration updates
 
 ## 🔒 Security Features
 
@@ -226,6 +272,7 @@ docker-compose up -d
 - **IP-based Limiting**: Per-client rate limiting
 - **Structured Logging**: No sensitive data in logs
 - **Error Handling**: Graceful error responses
+- **Configuration Validation**: YAML validation and error handling
 
 ## 🤝 Contributing
 
