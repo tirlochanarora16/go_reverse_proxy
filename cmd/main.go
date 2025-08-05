@@ -7,7 +7,7 @@ import (
 	"github.com/tirlochanarora16/go_reverse_proxy/internal/config"
 	"github.com/tirlochanarora16/go_reverse_proxy/internal/lb"
 	"github.com/tirlochanarora16/go_reverse_proxy/internal/middleware"
-	"github.com/tirlochanarora16/go_reverse_proxy/internal/requests"
+	"github.com/tirlochanarora16/go_reverse_proxy/internal/watcher"
 )
 
 func main() {
@@ -17,8 +17,8 @@ func main() {
 
 	middleware.InitLogger()
 	go middleware.InitRateLimiter()
-	go config.StartConfigFileWatcher()
-	mux := http.NewServeMux()
-	requests.HandleMuxRoutes(mux)
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	go watcher.StartConfigFileWatcher()
+	log.Fatal(http.ListenAndServe(":8080", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		lb.GetActiveMutex().ServeHTTP(w, r)
+	})))
 }

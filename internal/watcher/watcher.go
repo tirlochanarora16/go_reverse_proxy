@@ -1,11 +1,13 @@
-package config
+package watcher
 
 import (
 	"fmt"
 	"log"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/tirlochanarora16/go_reverse_proxy/internal/config"
 	"github.com/tirlochanarora16/go_reverse_proxy/internal/lb"
+	"github.com/tirlochanarora16/go_reverse_proxy/internal/requests"
 )
 
 func StartConfigFileWatcher() {
@@ -19,14 +21,14 @@ func StartConfigFileWatcher() {
 			select {
 			case event, ok := <-watcher.Events:
 				if !ok {
-					log.Println("Starting file watcher...", ok)
 					return
 				}
 
 				if event.Op&fsnotify.Write == fsnotify.Write {
 					log.Println("[CONFIG] Change detected in config file:", event.Name)
 
-					ParseConfigFile()
+					config.ParseConfigFile()
+					requests.HandleMuxRoutes()
 
 				}
 

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/tirlochanarora16/go_reverse_proxy/internal/config"
+	"github.com/tirlochanarora16/go_reverse_proxy/internal/lb"
 	"github.com/tirlochanarora16/go_reverse_proxy/internal/middleware"
 	"github.com/tirlochanarora16/go_reverse_proxy/internal/proxy"
 	"go.uber.org/zap"
@@ -19,7 +20,9 @@ func (rr *responseRecorder) WriteHeader(code int) {
 	rr.ResponseWriter.WriteHeader(code)
 }
 
-func HandleMuxRoutes(mux *http.ServeMux) {
+func HandleMuxRoutes() {
+	mux := http.NewServeMux()
+
 	// req from localhost:8080 will be transferred to localhost:3000
 	for _, route := range config.ConfigFileData.Routes {
 		route := route
@@ -54,4 +57,6 @@ func HandleMuxRoutes(mux *http.ServeMux) {
 
 		mux.Handle(route.Path, finalHandler)
 	}
+
+	lb.ActiveMutex.Store(mux)
 }
